@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "nome": "Drink Grátis",
+    "descricao": "Um drink da casa por conta do Vanderale",
+    "faixaMin": 0,
+    "faixaMax": 349,
+    "estoque": 50
+  },
+  {
+    "id": "2",
+    "nome": "Petisco Especial",
+    "descricao": "Petisco da casa + drink",
+    "faixaMin": 350,
+    "faixaMax": 549,
+    "estoque": 30
+  },
+  {
+    "id": "3",
+    "nome": "🏆 PRÊMIO OURO",
+    "descricao": "Prêmio especial VANDERALE — fale com o atendente!",
+    "faixaMin": 550,
+    "faixaMax": 9999,
+    "estoque": 10
+  }
+]

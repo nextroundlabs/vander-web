@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Expo Dev Server",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["node_modules\\expo\\bin\\cli", "start"],
+      "port": 8081
+    },
+    {
+      "name": "Expo Web",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["node_modules\\expo\\bin\\cli", "start", "--web", "--clear"],
+      "port": 8081,
+      "autoPort": false
+    },
+    {
+      "name": "Expo Android",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["node_modules\\expo\\bin\\cli", "start", "--android"],
+      "port": 8081
+    }
+  ]
+}

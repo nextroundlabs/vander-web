@@ -1,0 +1,82 @@
+/* Anton is loaded via expo-font (useAppFonts) on all platforms — including web @font-face. */
+
+:root {
+  --color-navy: #001B4F;
+  --color-pink: #F04F83;
+  --color-yellow: #FDBF1E;
+  --color-cream: #FFF1C7;
+  --color-dark: #050505;
+  --color-coral: #F45B68;
+  --color-green: #0F5B3E;
+
+  --font-title: 'Anton', sans-serif;
+  --font-hand: 'Anton', sans-serif;
+  --font-serif: 'Anton', sans-serif;
+}
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-dark);
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+input, textarea, button, select {
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Utilitários web (complementam StyleSheet nativo) ── */
+.retro-title-web {
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  color: var(--color-navy);
+  -webkit-text-stroke: 2px var(--color-yellow);
+  paint-order: stroke fill;
+  text-shadow: 4px 4px 0 var(--color-coral);
+  letter-spacing: 0.04em;
+}
+
+.retro-button-web {
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.retro-button-web:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 6px 8px 0 var(--color-coral);
+}
+
+.retro-button-web:active {
+  transform: translateY(2px) scale(0.98);
+}
+
+@keyframes retro-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes retro-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes retro-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.decor-star {
+  animation: retro-blink 2s ease-in-out infinite;
+}
+
+.decor-float {
+  animation: retro-float 3s ease-in-out infinite;
+}
