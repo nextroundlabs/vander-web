@@ -1,31 +1,27 @@
 import { StatusBar } from 'expo-status-bar'
 import React, { useState } from 'react'
 import { useAppFonts } from './hooks/useAppFonts'
-import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native'
+import { View, StyleSheet, Platform } from 'react-native'
 import { R } from './theme'
 import { Cadastro, Partida, Screen } from './types'
 import ScreenTransition from './components/ScreenTransition'
+import { useViewport } from './hooks/useViewport'
 
 import IdleScreen from './screens/IdleScreen'
 import LoginScreen from './screens/LoginScreen'
 import JogoScreen from './screens/JogoScreen'
 import PremiacaoScreen from './screens/PremiacaoScreen'
 
-/**
- * GameApp — o fluxo público do jogo (idle → login → jogo → premiação).
- * É TUDO que existe na URL pública que vai no QR code. Não tem nenhuma
- * referência ao dashboard admin — esse vive separado em AdminApp.tsx,
- * só acessível pela rota /admin (ver App.tsx na raiz do projeto).
- */
 export default function GameApp() {
   const [fontsLoaded] = useAppFonts()
-
   const [screen, setScreen] = useState<Screen>('idle')
   const [cadastro, setCadastro] = useState<Cadastro | null>(null)
   const [partida, setPartida] = useState<Partida | null>(null)
-  const { width, height } = useWindowDimensions()
+  const { width, height } = useViewport()
 
-  const rootSize = Platform.OS === 'web' ? ({ width: '100%', height: '100%' } as any) : { width, height }
+  const rootSize = Platform.OS === 'web'
+    ? ({ width: '100%', height: '100%' } as any)
+    : { width, height }
   const screenWrap = Platform.OS === 'web' ? styles.screenWeb : styles.screenNative
 
   const renderScreen = () => {
@@ -35,10 +31,7 @@ export default function GameApp() {
       case 'login':
         return (
           <LoginScreen
-            onExistingCadastro={c => {
-              setCadastro(c)
-              setScreen('jogo')
-            }}
+            onExistingCadastro={c => { setCadastro(c); setScreen('jogo') }}
             onCadastro={() => {}}
             onNewCadastro={() => {}}
             onBack={() => setScreen('idle')}
@@ -48,10 +41,7 @@ export default function GameApp() {
         return cadastro ? (
           <JogoScreen
             cadastro={cadastro}
-            onFinish={p => {
-              setPartida(p)
-              setScreen('premiacao')
-            }}
+            onFinish={p => { setPartida(p); setScreen('premiacao') }}
           />
         ) : null
       case 'premiacao':
@@ -60,11 +50,7 @@ export default function GameApp() {
             cadastro={cadastro}
             partida={partida}
             onPlayAgain={() => setScreen('jogo')}
-            onHome={() => {
-              setCadastro(null)
-              setPartida(null)
-              setScreen('idle')
-            }}
+            onHome={() => { setCadastro(null); setPartida(null); setScreen('idle') }}
           />
         ) : null
       default:

@@ -4,7 +4,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
-  useWindowDimensions,
   View,
 } from 'react-native'
 import { B } from '../brand'
@@ -14,6 +13,7 @@ import { getRanking } from '../db/storage'
 import { Partida } from '../types'
 import { BG_RANKING } from '../gameAssets'
 import { RetroDecor } from '../components/retro'
+import { useViewport } from '../hooks/useViewport'
 
 const IMG_W = 1080
 const IMG_H = 1920
@@ -28,7 +28,7 @@ const NAME_LEFT_PADDING = 22
 const SCORE_RIGHT_PADDING = 16
 
 function useCoverTransform() {
-  const { width: sw, height: sh } = useWindowDimensions()
+  const { width: sw, height: sh } = useViewport()
   const scale = Math.max(sw / IMG_W, sh / IMG_H)
   const offsetX = (sw - IMG_W * scale) / 2
   const offsetY = (sh - IMG_H * scale) / 2

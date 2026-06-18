@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   ImageBackground,
-  useWindowDimensions,
 } from 'react-native'
 import { R } from '../theme'
 import { B } from '../brand'
@@ -22,6 +21,8 @@ import { RetroButton, RetroPanel } from '../components/retro'
 import { S, serifSubDark, handLabel } from '../retro/styles'
 import { BG_LOGIN } from '../gameAssets'
 
+import { useViewport } from '../hooks/useViewport'
+
 const IMG_W = 1080
 const IMG_H = 1920
 
@@ -32,7 +33,7 @@ const CADASTRAR_TOP_Y = 1330.87
 const JA_TENHO_TOP_Y = 1494.51
 
 function useCoverTransform() {
-  const { width: sw, height: sh } = useWindowDimensions()
+  const { width: sw, height: sh } = useViewport()
   const scale = Math.max(sw / IMG_W, sh / IMG_H)
   const offsetX = (sw - IMG_W * scale) / 2
   const offsetY = (sh - IMG_H * scale) / 2
