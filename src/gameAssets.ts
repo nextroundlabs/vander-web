@@ -6,7 +6,7 @@
 // ─── Fundos das telas ─────────────────────────────────────────────────────────
 export const BG_RANKING = require('../assets/bg-ranking.png')
 export const BG_LOGIN   = require('../assets/bg-login.png')
-export const BG_JOGO    = require('../assets/jogo da memória.png')
+export const BG_JOGO = require('../assets/jogo-da-memoria.png')
 
 // ─── Verso das cartas (único para todas) ──────────────────────────────────────
 export const CARD_BACK = require('../assets/card-back.png')
