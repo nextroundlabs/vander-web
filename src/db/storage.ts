@@ -146,7 +146,10 @@ export async function saveCadastro(cadastro: Cadastro): Promise<Cadastro> {
 export async function getCadastroByTelefone(telefone: string): Promise<Cadastro | null> {
   const { data, error } = await supabase.rpc('buscar_cadastro_por_telefone', { p_telefone: telefone })
   if (error) fail('getCadastroByTelefone', error)
-  return data ? toCadastro(data) : null
+  // PostgreSQL retorna um composite NULL como objeto JS com todos os campos
+  // nulos (não como null/undefined). Verificamos data.id para distinguir um
+  // cadastro real de um resultado vazio — se id for nulo, não existe cadastro.
+  return (data && data.id) ? toCadastro(data) : null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
