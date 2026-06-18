@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, ImageBackground } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image, ImageBackground } from 'react-native'
 import { C, R } from '../theme'
 import { B } from '../brand'
 import { hp, fp, wp } from '../scale'
@@ -8,6 +8,7 @@ import { Cadastro, Partida, Configuracao } from '../types'
 import { getConfig, savePartida, getSessaoAtiva } from '../db/storage'
 import { BG_JOGO, CARD_ASSETS } from '../gameAssets'
 import { serifSub, retroButtonText } from '../retro/styles'
+import { useViewport } from '../hooks/useViewport'
 
 // Cada entrada gera 2 cartas: card1 e card2 têm imagens diferentes mas mesmo pairId
 const PAIR_DATA = [
@@ -270,13 +271,22 @@ export default function JogoScreen({ cadastro, onFinish }: Props) {
   }
 
   // ── Layout ───────────────────────────────────────────────────────
-  const COLS = 4, ROWS = 3, CARD_MARGIN = 4
-  const { width: sw, height: sh } = Dimensions.get('window')
-  const HEADER_H = hp(11), TITLE_H = hp(11), FOOTER_H = hp(10), GRID_PAD = 8
-  const availW = sw - GRID_PAD * 2 - CARD_MARGIN * 2 * COLS
-  const availH = sh - HEADER_H - TITLE_H - FOOTER_H - GRID_PAD * 2 - CARD_MARGIN * 2 * ROWS
-  const cardW  = Math.min(availW / COLS, (availH / ROWS) * 0.72)
-  const cardH  = cardW / 0.72
+  const { width: sw, height: sh } = useViewport()
+  // Em telas estreitas (celulares) usamos 3 colunas para cartas maiores.
+  // Em telas mais largas (tablets, desktop) mantemos 4 colunas originais.
+  const COLS       = sw < 600 ? 3 : 4
+  const ROWS       = sw < 600 ? 4 : 3
+  const CARD_MARGIN = sw < 600 ? 6 : 4
+  const GRID_PAD   = 8
+  // Reduz header/footer em telas pequenas para dar mais espaço às cartas
+  const hScale     = sw < 600 ? 0.75 : 1
+  const HEADER_H   = hp(11) * hScale
+  const TITLE_H    = hp(11) * hScale
+  const FOOTER_H   = hp(10) * hScale
+  const availW     = sw - GRID_PAD * 2 - CARD_MARGIN * 2 * COLS
+  const availH     = sh - HEADER_H - TITLE_H - FOOTER_H - GRID_PAD * 2 - CARD_MARGIN * 2 * ROWS
+  const cardW      = Math.min(availW / COLS, (availH / ROWS) * 0.72)
+  const cardH      = cardW / 0.72
 
   const rows: (typeof cards)[] = []
   for (let i = 0; i < cards.length; i += COLS) rows.push(cards.slice(i, i + COLS))
@@ -552,7 +562,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 16,
   },
-  gridRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 80 },
+  gridRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 4 },
 
   footer: {
     height: hp(10),

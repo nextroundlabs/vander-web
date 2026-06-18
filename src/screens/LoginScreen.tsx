@@ -21,25 +21,6 @@ import { RetroButton, RetroPanel } from '../components/retro'
 import { S, serifSubDark, handLabel } from '../retro/styles'
 import { BG_LOGIN } from '../gameAssets'
 
-import { useViewport } from '../hooks/useViewport'
-
-const IMG_W = 1080
-const IMG_H = 1920
-
-const BTN_LEFT_X = 187.4
-const BTN_RIGHT_X = 195.4
-const BTN_HEIGHT = 142.736
-const CADASTRAR_TOP_Y = 1330.87
-const JA_TENHO_TOP_Y = 1494.51
-
-function useCoverTransform() {
-  const { width: sw, height: sh } = useViewport()
-  const scale = Math.max(sw / IMG_W, sh / IMG_H)
-  const offsetX = (sw - IMG_W * scale) / 2
-  const offsetY = (sh - IMG_H * scale) / 2
-  return { scale, offsetX, offsetY, sw, sh }
-}
-
 type ModalMode = 'none' | 'phone' | 'cadastro'
 
 type Props = {
@@ -55,17 +36,10 @@ function PhoneEntry({ onConfirm, onBack }: { onConfirm: (t: string) => void; onB
   const [error, setError] = useState('')
 
   const go = async () => {
-    if (tel.length < 8) {
-      setError('Mínimo 8 dígitos')
-      return
-    }
+    if (tel.length < 8) { setError('Mínimo 8 dígitos'); return }
     setError('')
     setLoading(true)
-    try {
-      await onConfirm(tel)
-    } finally {
-      setLoading(false)
-    }
+    try { await onConfirm(tel) } finally { setLoading(false) }
   }
 
   const display = tel.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 15)
@@ -75,7 +49,6 @@ function PhoneEntry({ onConfirm, onBack }: { onConfirm: (t: string) => void; onB
       <TouchableOpacity style={s.backRow} onPress={onBack}>
         <Text style={s.back}>← VOLTAR</Text>
       </TouchableOpacity>
-
       <ScrollView
         contentContainerStyle={[s.formScroll, { paddingBottom: KEYBOARD_DOCK_PADDING }]}
         keyboardShouldPersistTaps="handled"
@@ -84,7 +57,6 @@ function PhoneEntry({ onConfirm, onBack }: { onConfirm: (t: string) => void; onB
           <Text style={s.panelTitle}>Seu Telefone</Text>
           <Text style={[serifSubDark, s.subtitle]}>Digite para identificar seu cadastro</Text>
           <Text style={handLabel}>~ só os números ~</Text>
-
           <View style={[S.creamInput, { marginTop: hp(2) }]}>
             <Text style={[S.creamInputText, tel.length === 0 && s.placeholder]}>
               {tel.length > 0 ? display : '(00) 00000-0000'}
@@ -93,7 +65,6 @@ function PhoneEntry({ onConfirm, onBack }: { onConfirm: (t: string) => void; onB
           {error ? <Text style={s.error}>{error}</Text> : null}
         </RetroPanel>
       </ScrollView>
-
       <KeyboardDock>
         <RetroButton
           label="Entrar →"
@@ -111,7 +82,6 @@ function PhoneEntry({ onConfirm, onBack }: { onConfirm: (t: string) => void; onB
 export default function LoginScreen({ onExistingCadastro, onCadastro, onNewCadastro, onBack }: Props) {
   const [modal, setModal] = useState<ModalMode>('none')
   const [cadastroTel, setCadastroTel] = useState('')
-  const { scale, offsetX, offsetY, sw } = useCoverTransform()
 
   const closeModal = () => setModal('none')
 
@@ -124,12 +94,8 @@ export default function LoginScreen({ onExistingCadastro, onCadastro, onNewCadas
 
   const handlePhone = async (tel: string) => {
     const ex = await getCadastroByTelefone(tel)
-    if (ex) {
-      closeModal()
-      onExistingCadastro(ex)
-    } else {
-      openCadastro(tel)
-    }
+    if (ex) { closeModal(); onExistingCadastro(ex) }
+    else openCadastro(tel)
   }
 
   const handleCadastroComplete = (c: Cadastro) => {
@@ -137,40 +103,33 @@ export default function LoginScreen({ onExistingCadastro, onCadastro, onNewCadas
     onExistingCadastro(c)
   }
 
-  const btnLeft = BTN_LEFT_X * scale + offsetX
-  const btnRight = BTN_RIGHT_X * scale + offsetX
-  const btnWidth = sw - btnLeft - btnRight
-  const btnHeight = BTN_HEIGHT * scale
-  const cadastrarTop = CADASTRAR_TOP_Y * scale + offsetY
-  const jaTenhoTop = JA_TENHO_TOP_Y * scale + offsetY
-
-  const hotspotStyle = {
-    position: 'absolute' as const,
-    left: btnLeft,
-    width: btnWidth,
-    height: btnHeight,
-  }
-
   return (
     <>
       <ImageBackground source={BG_LOGIN} style={s.root} resizeMode="cover">
+        {/* VOLTAR */}
         <TouchableOpacity style={s.backRow} onPress={onBack}>
           <Text style={s.back}>← VOLTAR</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[hotspotStyle, { top: cadastrarTop }]}
-          onPress={() => openCadastro()}
-          activeOpacity={1}
-          accessibilityLabel="Cadastrar"
-        />
-
-        <TouchableOpacity
-          style={[hotspotStyle, { top: jaTenhoTop }]}
-          onPress={() => setModal('phone')}
-          activeOpacity={1}
-          accessibilityLabel="Já tenho cadastro"
-        />
+        {/* Botões reais posicionados na parte inferior da tela.
+            A imagem de fundo já mostra os botões visualmente — estes
+            TouchableOpacity transparentes ficam sobrepostos sobre eles,
+            garantindo que funcionem em qualquer tamanho de tela sem depender
+            de cálculo de pixels. */}
+        <View style={s.buttonsArea}>
+          <TouchableOpacity
+            style={s.btn}
+            onPress={() => openCadastro()}
+            activeOpacity={0.7}
+            accessibilityLabel="Cadastrar"
+          />
+          <TouchableOpacity
+            style={s.btn}
+            onPress={() => setModal('phone')}
+            activeOpacity={0.7}
+            accessibilityLabel="Já tenho cadastro"
+          />
+        </View>
       </ImageBackground>
 
       <BlurModal visible={modal === 'phone'} onClose={closeModal}>
@@ -201,7 +160,28 @@ const s = StyleSheet.create({
   root: { flex: 1 },
   modalInner: { flex: 1 },
   backRow: { paddingHorizontal: wp(5), paddingTop: hp(1.5), zIndex: 5 },
-  back: { color: R.yellow, fontFamily: B.font, fontSize: fp(2.4), letterSpacing: 2, textTransform: 'uppercase' },
+  back: {
+    color: R.yellow, fontFamily: B.font,
+    fontSize: fp(2.4), letterSpacing: 2, textTransform: 'uppercase',
+  },
+  /**
+   * Área que cobre os dois botões da imagem de fundo.
+   * A imagem de design (1080×1920) tem os botões entre ~69% e ~86% da altura.
+   * Usamos posição absoluta com percentagens — funciona em qualquer resolução
+   * porque é relativa ao container (que já preenche a tela via flex:1).
+   */
+  buttonsArea: {
+    position: 'absolute',
+    left: '14%',
+    right: '14%',
+    top: '65%',
+    bottom: '10%',
+    justifyContent: 'space-around',
+  },
+  btn: {
+    flex: 1,
+    marginVertical: '1.5%',
+  },
   formScroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -226,5 +206,9 @@ const s = StyleSheet.create({
   },
   subtitle: { marginTop: hp(0.5) },
   placeholder: { color: '#9a8f7a', opacity: 0.7 },
-  error: { color: R.coral, fontFamily: B.font, fontSize: fp(2.4), textAlign: 'center', marginTop: hp(1), letterSpacing: 0.5, textTransform: 'uppercase' },
+  error: {
+    color: R.coral, fontFamily: B.font,
+    fontSize: fp(2.4), textAlign: 'center',
+    marginTop: hp(1), letterSpacing: 0.5, textTransform: 'uppercase',
+  },
 })
