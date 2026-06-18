@@ -5,8 +5,6 @@ import { View, StyleSheet, Platform } from 'react-native'
 import { R } from './theme'
 import { Cadastro, Partida, Screen } from './types'
 import ScreenTransition from './components/ScreenTransition'
-import { useViewport } from './hooks/useViewport'
-
 import IdleScreen from './screens/IdleScreen'
 import LoginScreen from './screens/LoginScreen'
 import JogoScreen from './screens/JogoScreen'
@@ -17,11 +15,9 @@ export default function GameApp() {
   const [screen, setScreen] = useState<Screen>('idle')
   const [cadastro, setCadastro] = useState<Cadastro | null>(null)
   const [partida, setPartida] = useState<Partida | null>(null)
-  const { width, height } = useViewport()
-
   const rootSize = Platform.OS === 'web'
-    ? ({ width: '100%', height: '100%' } as any)
-    : { width, height }
+    ? ({ width: '100%', height: '100%' } as const)
+    : undefined
   const screenWrap = Platform.OS === 'web' ? styles.screenWeb : styles.screenNative
 
   const renderScreen = () => {
@@ -73,7 +69,7 @@ export default function GameApp() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: R.dark },
+  root: { flex: 1, overflow: 'hidden', backgroundColor: R.dark },
   screenWeb: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   screenNative: { flex: 1 },
 })

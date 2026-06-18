@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   Animated,
-  ImageBackground,
+  Image,
   ScrollView,
   Platform,
 } from 'react-native'
@@ -16,6 +16,9 @@ import { getPosicaoNoRanking, resolverPremio } from '../db/storage'
 import { BG_JOGO } from '../gameAssets'
 import { RetroButton, RetroPanel, RetroDecor } from '../components/retro'
 import { handLabel, serifSubDark } from '../retro/styles'
+import { useViewport } from '../hooks/useViewport'
+import { isCompact } from '../responsive'
+import CoverBackground from '../components/CoverBackground'
 
 type Props = { cadastro: Cadastro; partida: Partida; onPlayAgain: () => void; onHome: () => void }
 
@@ -90,6 +93,8 @@ export default function PremiacaoScreen({ cadastro, partida, onPlayAgain: _onPla
   const [jaParticipou, setJaParticipou] = useState(false)
   const [ranking, setRanking] = useState(0)
   const [loading, setLoading] = useState(true)
+  const { width } = useViewport()
+  const compact = isCompact(width)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.92)).current
@@ -123,7 +128,7 @@ export default function PremiacaoScreen({ cadastro, partida, onPlayAgain: _onPla
   }
 
   return (
-    <ImageBackground source={BG_JOGO} style={s.root} resizeMode="cover">
+    <CoverBackground source={BG_JOGO}>
       <View style={s.overlay} pointerEvents="none" />
 
       {/* ── Compact header — logo only ─────────────────────────────── */}
@@ -148,7 +153,7 @@ export default function PremiacaoScreen({ cadastro, partida, onPlayAgain: _onPla
             <Text style={s.titleStarAlt}>✦</Text>
             <Text style={s.titleStar}>★</Text>
           </View>
-          <Text style={s.mainTitle}>Desafio concluído!</Text>
+          <Text style={[s.mainTitle, compact && s.mainTitleCompact]}>Desafio concluído!</Text>
           <Text style={s.titleSub}>Você acertou todos os pares!</Text>
         </View>
 
@@ -165,7 +170,7 @@ export default function PremiacaoScreen({ cadastro, partida, onPlayAgain: _onPla
         </Animated.View>
 
         {/* ── Result summary ───────────────────────────────────────── */}
-        <View style={s.statsRow}>
+        <View style={[s.statsRow, compact && s.statsRowCompact]}>
           <StatCard label="PONTOS" value={String(partida.pontuacao)} bg={R.yellow} />
           <StatCard label="RANKING" value={`${ranking}º`} bg={R.pink} />
           <StatCard label="PARES" value={`${partida.pares}/6`} bg={R.cream} />
@@ -194,12 +199,11 @@ export default function PremiacaoScreen({ cadastro, partida, onPlayAgain: _onPla
           textStyle={s.homeBtnText}
         />
       </View>
-    </ImageBackground>
+    </CoverBackground>
   )
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: R.dark },
   overlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5,5,5,0.55)',
@@ -262,6 +266,10 @@ const s = StyleSheet.create({
     textTransform: 'uppercase',
     textAlign: 'center',
     lineHeight: fp(7.2),
+  },
+  mainTitleCompact: {
+    fontSize: fp(4.8),
+    lineHeight: fp(5.8),
   },
   titleSub: {
     fontFamily: B.font,
@@ -336,6 +344,9 @@ const s = StyleSheet.create({
     flexWrap: 'wrap',
     gap: wp(2),
     justifyContent: 'center',
+  },
+  statsRowCompact: {
+    gap: wp(1.5),
   },
   statCard: {
     flexGrow: 1,

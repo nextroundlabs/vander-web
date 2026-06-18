@@ -55,6 +55,7 @@ export const retroButtonPrimary: ViewStyle = {
   borderRadius: retro.radius,
   paddingVertical: hp(1.6),
   paddingHorizontal: wp(6),
+  minHeight: 48,
   alignItems: 'center',
   justifyContent: 'center',
   ...Platform.select({

@@ -1,21 +1,14 @@
-import { Dimensions, Platform } from 'react-native'
+import { getViewportSize } from './viewportSize'
 
 /**
- * Retorna a largura do viewport em CSS pixels.
- * No web usamos window.innerWidth — garante CSS pixels corretos
- * independente do devicePixelRatio (alguns builds do React Native Web
- * retornam pixels físicos via Dimensions.get, o que quebra o layout
- * em dispositivos com DPR > 1).
+ * Helpers de escala baseados no viewport atual.
+ *
+ * ATENÇÃO: wp/hp/fp chamados dentro de StyleSheet.create() são congelados
+ * no carregamento do módulo. Em telas com fundo artístico, prefira
+ * useScale() + useCoverTransform() dentro do componente.
  */
-const getW = (): number => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') return window.innerWidth
-  return Dimensions.get('window').width
-}
-
-const getH = (): number => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') return window.innerHeight
-  return Dimensions.get('window').height
-}
+const getW = () => getViewportSize().width
+const getH = () => getViewportSize().height
 
 export const W = getW()
 export const H = getH()
@@ -28,3 +21,7 @@ export const hp = (pct: number) => (getH() * pct) / 100
 
 /** Percentagem da menor dimensão — usado para fontes */
 export const fp = (pct: number) => (Math.min(getW(), getH()) * pct) / 100
+
+export { useScale } from './hooks/useScale'
+export { useCoverTransform } from './hooks/useCoverTransform'
+export { DESIGN_W, DESIGN_H, designRect } from './designCanvas'

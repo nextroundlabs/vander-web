@@ -1,8 +1,9 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, Dimensions } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native'
 import { R } from '../../theme'
 import { B } from '../../brand'
 import { fp, wp, hp } from '../../scale'
+import { useViewport } from '../../hooks/useViewport'
 import RetroTitle from './RetroTitle'
 import RetroButton from './RetroButton'
 
@@ -35,7 +36,8 @@ export default function RetroModal({
   borderColor = R.navy,
   flatTitle = false,
 }: Props) {
-  const boxMaxWidth = Math.min(MODAL_MAX_WIDTH, Dimensions.get('window').width - wp(10))
+  const { width } = useViewport()
+  const boxMaxWidth = Math.min(MODAL_MAX_WIDTH, width - wp(10))
 
   const body = scrollable ? (
     <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator>

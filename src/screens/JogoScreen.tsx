@@ -1,14 +1,42 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Image, ImageBackground } from 'react-native'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image } from 'react-native'
 import { C, R } from '../theme'
 import { B } from '../brand'
-import { hp, fp, wp } from '../scale'
-import MemoryCard, { CardData } from '../components/MemoryCard'
+import MemoryCard, { CardData, CARD_ASPECT } from '../components/MemoryCard'
 import { Cadastro, Partida, Configuracao } from '../types'
 import { getConfig, savePartida, getSessaoAtiva } from '../db/storage'
 import { BG_JOGO, CARD_ASSETS } from '../gameAssets'
 import { serifSub, retroButtonText } from '../retro/styles'
-import { useViewport } from '../hooks/useViewport'
+import { isCompact, isNarrow } from '../responsive'
+import { designRect } from '../designCanvas'
+import { useScale } from '../hooks/useScale'
+import { useCoverTransform } from '../hooks/useCoverTransform'
+import CoverBackground from '../components/CoverBackground'
+
+/** Regiões do HUD no canvas bg-jogo (1080×1920) */
+const HUD_LEFT = 32
+const HUD_TOP = 56
+const HUD_W = 1016
+const HUD_H = 152
+
+const TITLE_LEFT = 40
+const TITLE_TOP = 200
+const TITLE_W = 1000
+const TITLE_H = 164
+
+const GRID_LEFT = 24
+const GRID_TOP = 368
+const GRID_W = 1032
+const GRID_H = 1288
+
+const FOOTER_LEFT = 48
+const FOOTER_TOP = 1672
+const FOOTER_W = 984
+const FOOTER_H = 248
+
+/** Pop-up ao acertar par — imagem centralizada (canvas 1080×1920) */
+const POPUP_IMG_W = 960
+const POPUP_IMG_H = 1280
 
 // Cada entrada gera 2 cartas: card1 e card2 têm imagens diferentes mas mesmo pairId
 const PAIR_DATA = [
@@ -285,23 +313,41 @@ export default function JogoScreen({ cadastro, onFinish }: Props) {
     }
   }
 
-  // ── Layout ───────────────────────────────────────────────────────
-  const { width: sw, height: sh } = useViewport()
-  // Em telas estreitas (celulares) usamos 3 colunas para cartas maiores.
-  // Em telas mais largas (tablets, desktop) mantemos 4 colunas originais.
-  const COLS       = sw < 600 ? 3 : 4
-  const ROWS       = sw < 600 ? 4 : 3
-  const CARD_MARGIN = sw < 600 ? 6 : 4
-  const GRID_PAD   = 8
-  // Reduz header/footer em telas pequenas para dar mais espaço às cartas
-  const hScale     = sw < 600 ? 0.75 : 1
-  const HEADER_H   = hp(11) * hScale
-  const TITLE_H    = hp(11) * hScale
-  const FOOTER_H   = hp(10) * hScale
-  const availW     = sw - GRID_PAD * 2 - CARD_MARGIN * 2 * COLS
-  const availH     = sh - HEADER_H - TITLE_H - FOOTER_H - GRID_PAD * 2 - CARD_MARGIN * 2 * ROWS
-  const cardW      = Math.min(availW / COLS, (availH / ROWS) * 0.72)
-  const cardH      = cardW / 0.72
+  // ── Layout (cover + designRect — alinhado ao bg 1080×1920) ───────
+  const { scale, offsetX, offsetY, sw, sh } = useCoverTransform()
+  const { fp } = useScale()
+  const narrow = isNarrow(sw)
+  const compact = isCompact(sw)
+
+  const headerFrame = useMemo(
+    () => ({ position: 'absolute' as const, ...designRect(HUD_LEFT, HUD_TOP, HUD_W, HUD_H, scale, offsetX, offsetY) }),
+    [scale, offsetX, offsetY],
+  )
+  const titleFrame = useMemo(
+    () => ({ position: 'absolute' as const, ...designRect(TITLE_LEFT, TITLE_TOP, TITLE_W, TITLE_H, scale, offsetX, offsetY) }),
+    [scale, offsetX, offsetY],
+  )
+  const gridFrame = useMemo(
+    () => ({ position: 'absolute' as const, ...designRect(GRID_LEFT, GRID_TOP, GRID_W, GRID_H, scale, offsetX, offsetY) }),
+    [scale, offsetX, offsetY],
+  )
+  const footerFrame = useMemo(
+    () => ({ position: 'absolute' as const, ...designRect(FOOTER_LEFT, FOOTER_TOP, FOOTER_W, FOOTER_H, scale, offsetX, offsetY) }),
+    [scale, offsetX, offsetY],
+  )
+
+  const COLS = narrow ? 3 : 4
+  const ROWS = narrow ? 4 : 3
+  const cardGap = (narrow ? 4 : 5) * scale
+  const gridPad = 4 * scale
+
+  const gridInnerW = GRID_W * scale - gridPad * 2
+  const gridInnerH = GRID_H * scale - gridPad * 2
+  const maxCardW = (gridInnerW - cardGap * COLS) / COLS
+  const maxCardH = (gridInnerH - cardGap * ROWS) / ROWS
+  // Cartas devem caber nas células em largura E altura (aspect ratio fixo).
+  const cardW = Math.min(maxCardW, maxCardH * CARD_ASPECT)
+  const cardH = cardW / CARD_ASPECT
 
   const rows: (typeof cards)[] = []
   for (let i = 0; i < cards.length; i += COLS) rows.push(cards.slice(i, i + COLS))
@@ -311,103 +357,132 @@ export default function JogoScreen({ cadastro, onFinish }: Props) {
 
   const comboLabel = streakDisplay > 1 ? `×${streakDisplay}` : streakDisplay === 1 ? '×1' : '—'
 
-  // Na preview, todas as cartas ficam "flipped" (mostrando a frente)
-  const allIds = cards.map(c => c.id)
+  const fs = (designPx: number) => designPx * scale
+  const statLabelSize = fs(compact ? 22 : narrow ? 24 : 29)
+  const statValueSize = fs(compact ? 34 : narrow ? 38 : 48)
+  const titleSize = fs(compact ? 38 : narrow ? 43 : 55)
+  const titleSubSize = fs(26)
+  const footerDicaSize = fs(compact ? 26 : 31)
+  const footerTextSize = fs(compact ? 22 : 25)
+  const logoLineSize = fs(narrow ? 19 : 26)
+  const logoLineHeight = fs(narrow ? 24 : 33)
+  const boltSize = fs(narrow ? 26 : 33)
+
+  const popupImgW = POPUP_IMG_W * scale
+  const popupImgH = Math.min(POPUP_IMG_H * scale, sh * 0.68)
 
   return (
-    <ImageBackground source={BG_JOGO} style={styles.container} resizeMode="cover">
+    <CoverBackground source={BG_JOGO}>
 
       {/* ── HEADER ─────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <View style={styles.logoWrap}>
-          <View style={styles.miniLogoBox}>
-            {B.logoLines.map((line, i) => (
-              <Text key={i} style={styles.miniLogoLine}>{line}</Text>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.headerDivV} />
+      <View style={[styles.header, headerFrame]}>
+        {!narrow && (
+          <>
+            <View style={styles.logoWrap}>
+              <View style={[styles.miniLogoBox, { paddingHorizontal: fs(10), paddingVertical: fs(4), borderWidth: 2 * scale }]}>
+                {B.logoLines.map((line, i) => (
+                  <Text
+                    key={i}
+                    style={[styles.miniLogoLine, { fontSize: logoLineSize, lineHeight: logoLineHeight }]}
+                  >
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            </View>
+            <View style={[styles.headerDivV, { width: 2 * scale, height: HUD_H * scale * 0.65, marginHorizontal: fs(8) }]} />
+          </>
+        )}
 
         <View style={styles.statsRow}>
           <View style={styles.statCol}>
-            <Text style={styles.statLabel}>PONTOS</Text>
-            <Animated.Text style={[styles.statValue, { transform: [{ scale: scoreAnim }] }]}>
+            <Text style={[styles.statLabel, { fontSize: statLabelSize }]}>PONTOS</Text>
+            <Animated.Text style={[styles.statValue, { fontSize: statValueSize }, { transform: [{ scale: scoreAnim }] }]}>
               {scoreDisplay}
             </Animated.Text>
           </View>
 
-          <View style={styles.statSep}>
-            <Text style={styles.headerBolt}>⚡</Text>
-          </View>
+          {!narrow && (
+            <View style={styles.statSep}>
+              <Text style={[styles.headerBolt, { fontSize: boltSize }]}>⚡</Text>
+            </View>
+          )}
 
           <View style={styles.statCol}>
-            <Text style={styles.statLabel}>COMBO</Text>
-            <Animated.Text style={[styles.statValue, { transform: [{ scale: streakAnim }] }]}>
+            <Text style={[styles.statLabel, { fontSize: statLabelSize }]}>COMBO</Text>
+            <Animated.Text style={[styles.statValue, { fontSize: statValueSize }, { transform: [{ scale: streakAnim }] }]}>
               {comboLabel}
             </Animated.Text>
           </View>
 
-          <View style={styles.statSep}>
-            <Text style={styles.headerBolt}>⚡</Text>
+          {!narrow && (
+            <View style={styles.statSep}>
+              <Text style={[styles.headerBolt, { fontSize: boltSize }]}>⚡</Text>
+            </View>
+          )}
+
+          <View style={styles.statCol}>
+            <Text style={[styles.statLabel, { fontSize: statLabelSize }]}>PARES</Text>
+            <Text style={[styles.statValue, { fontSize: statValueSize }]}>{matched.length}/{cards.length}</Text>
           </View>
 
           <View style={styles.statCol}>
-            <Text style={styles.statLabel}>PARES</Text>
-            <Text style={styles.statValue}>{matched.length}/{cards.length}</Text>
-          </View>
-
-          <View style={styles.statCol}>
-            <Text style={styles.statLabel}>TEMPO</Text>
-            <Text style={styles.statValue}>{mm}:{ss}</Text>
+            <Text style={[styles.statLabel, { fontSize: statLabelSize }]}>TEMPO</Text>
+            <Text style={[styles.statValue, { fontSize: statValueSize }]}>{mm}:{ss}</Text>
           </View>
         </View>
       </View>
 
       {/* ── TÍTULO ─────────────────────────────────────────────────── */}
-      <View style={styles.titleSection}>
+      <View style={[styles.titleSection, titleFrame]}>
         {phase === 'preview' ? (
           <>
             <View style={styles.titleRow}>
-              <Text style={styles.titleBolt}>👀</Text>
-              <Text style={[styles.titleText, { color: C.warning }]}>MEMORIZE AS CARTAS!</Text>
-              <Text style={styles.titleBolt}>👀</Text>
+              <Text style={[styles.titleBolt, { fontSize: boltSize }]}>👀</Text>
+              <Text style={[styles.titleText, { fontSize: titleSize, color: C.warning }]}>MEMORIZE AS CARTAS!</Text>
+              <Text style={[styles.titleBolt, { fontSize: boltSize }]}>👀</Text>
             </View>
             <View style={styles.previewCountRow}>
-              <Text style={styles.previewCountText}>{previewCount}</Text>
+              <Text style={[styles.previewCountText, { fontSize: fs(68) }]}>{previewCount}</Text>
             </View>
           </>
         ) : (
           <>
             <View style={styles.titleRow}>
-              <Text style={styles.titleBolt}>⚡</Text>
-              <Text style={styles.titleText}>ENCONTRE OS PARES!</Text>
-              <Text style={styles.titleBolt}>⚡</Text>
+              <Text style={[styles.titleBolt, { fontSize: boltSize }]}>⚡</Text>
+              <Text style={[styles.titleText, { fontSize: titleSize }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                ENCONTRE OS PARES!
+              </Text>
+              <Text style={[styles.titleBolt, { fontSize: boltSize }]}>⚡</Text>
             </View>
-            <Text style={styles.titleSub}>DIAS DA SEMANA  •  PRATOS DO DIA  •  E UMA CARTA ESPECIAL</Text>
+            {!narrow && (
+              <Text style={[styles.titleSub, { fontSize: titleSubSize, marginTop: fs(6) }]} numberOfLines={2}>
+                DIAS DA SEMANA  •  PRATOS DO DIA  •  E UMA CARTA ESPECIAL
+              </Text>
+            )}
           </>
         )}
       </View>
 
-      {/* ── GRID (cartas intactas — só moldura retro) ──────────────── */}
-      <View style={styles.gridFrame}>
+      {/* ── GRID ───────────────────────────────────────────────────── */}
+      <View style={[styles.gridFrame, gridFrame, { borderRadius: 14 * scale, padding: gridPad }]}>
         <View style={styles.grid}>
-        {rows.map((row, ri) => (
-          <View key={ri} style={styles.gridRow}>
-            {row.map(card => (
-              <MemoryCard
-                key={card.id}
-                card={card}
-                cardWidth={cardW}
-                cardHeight={cardH}
-                // Preview: todos abertos; jogo: só os que foram clicados/acertados
-                isFlipped={phase === 'preview' ? true : flipped.includes(card.id)}
-                isMatched={matched.includes(card.id)}
-                onPress={() => handleCardPress(card.id)}
-              />
-            ))}
-          </View>
-        ))}
+          {rows.map((row, ri) => (
+            <View key={ri} style={styles.gridRow}>
+              {row.map(card => (
+                <MemoryCard
+                  key={card.id}
+                  card={card}
+                  cardWidth={cardW}
+                  cardHeight={cardH}
+                  gap={cardGap}
+                  isFlipped={phase === 'preview' ? true : flipped.includes(card.id)}
+                  isMatched={matched.includes(card.id)}
+                  onPress={() => handleCardPress(card.id)}
+                />
+              ))}
+            </View>
+          ))}
         </View>
       </View>
 
@@ -415,9 +490,15 @@ export default function JogoScreen({ cadastro, onFinish }: Props) {
       {popupImage && (
         <Animated.View style={[styles.popupOverlay, { opacity: popupOpacity }]}>
           <TouchableOpacity style={styles.popupTouchable} onPress={closePopup} activeOpacity={0.95}>
-            <Image source={popupImage} style={styles.popupImage} resizeMode="contain" />
-            <View style={styles.popupHint}>
-              <Text style={styles.popupHintText}>TOQUE PARA CONTINUAR</Text>
+            <View style={styles.popupContent}>
+              <Image
+                source={popupImage}
+                style={{ width: popupImgW, height: popupImgH }}
+                resizeMode="contain"
+              />
+              <View style={[styles.popupHint, { marginTop: fs(16), borderWidth: 4 * scale, paddingHorizontal: fp(3.5), paddingVertical: fp(1), borderRadius: 12 * scale }]}>
+                <Text style={[styles.popupHintText, { fontSize: fs(26) }]}>TOQUE PARA CONTINUAR</Text>
+              </View>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -432,167 +513,167 @@ export default function JogoScreen({ cadastro, onFinish }: Props) {
             transform: [{ scale: comboScale }, { translateX: comboShake }],
           }]}
         >
-          <Text style={styles.comboFire}>🔥</Text>
-          <Text style={styles.comboTitle}>COMBO!</Text>
-          <Text style={styles.comboCount}>×{comboCount}</Text>
-          <Text style={styles.comboBonus}>+{comboBonus} PTS BÔNUS</Text>
-          <Text style={styles.comboFire}>🔥</Text>
+          <Text style={[styles.comboFire, { fontSize: fs(115), lineHeight: fs(132) }]}>🔥</Text>
+          <Text style={[styles.comboTitle, { fontSize: fs(154) }]}>COMBO!</Text>
+          <Text style={[styles.comboCount, { fontSize: fs(211), lineHeight: fs(228) }]}>×{comboCount}</Text>
+          <Text style={[styles.comboBonus, { fontSize: fs(58), marginTop: fs(8), paddingHorizontal: fs(20), paddingVertical: fs(6), borderWidth: 3 * scale }]}>
+            +{comboBonus} PTS BÔNUS
+          </Text>
+          <Text style={[styles.comboFire, { fontSize: fs(115), lineHeight: fs(132) }]}>🔥</Text>
         </Animated.View>
       )}
 
       {/* ── RODAPÉ ─────────────────────────────────────────────────── */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, footerFrame]}>
         {phase === 'preview' ? (
-          <Text style={styles.footerPreviewText}>
-            As cartas vão virar em <Text style={styles.footerPreviewHighlight}>{previewCount}s</Text>… prepare-se!
+          <Text style={[styles.footerPreviewText, { fontSize: fs(31) }]}>
+            As cartas vão virar em <Text style={[styles.footerPreviewHighlight, { fontSize: fs(31) }]}>{previewCount}s</Text>… prepare-se!
           </Text>
         ) : (
           <>
             <View style={styles.footerRow}>
-              <Text style={styles.dicaLabel}>DICA</Text>
-              <Text style={styles.footerBolt}>⚡</Text>
+              <Text style={[styles.dicaLabel, { fontSize: footerDicaSize }]}>DICA</Text>
+              <Text style={[styles.footerBolt, { fontSize: fs(29) }]}>⚡</Text>
               {streakDisplay > 1 && (
-                <Text style={styles.comboMsg}>🔥 COMBO ×{streakDisplay}!</Text>
+                <Text style={[styles.comboMsg, { fontSize: fs(34) }]}>🔥 COMBO ×{streakDisplay}!</Text>
               )}
             </View>
-            <Text style={styles.footerText}>
-              ACERTE OS PARES PARA REVELAR INFORMAÇÕES{'\n'}SOBRE NOSSOS PRATOS E O VANDERALE!
+            <Text style={[styles.footerText, { fontSize: footerTextSize, marginTop: fs(4), lineHeight: footerTextSize * 1.35 }]}>
+              {narrow
+                ? 'ACERTE OS PARES PARA REVELAR INFORMAÇÕES SOBRE NOSSOS PRATOS!'
+                : 'ACERTE OS PARES PARA REVELAR INFORMAÇÕES\nSOBRE NOSSOS PRATOS E O VANDERALE!'}
             </Text>
           </>
         )}
-        <Text style={styles.hopIcon}>🌿</Text>
+        <Text style={[styles.hopIcon, { fontSize: fs(34), marginTop: fs(4) }]}>🌿</Text>
       </View>
-    </ImageBackground>
+    </CoverBackground>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: R.dark },
 
   header: {
-    height: hp(11),
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: fp(2),
-    paddingVertical: fp(0.5),
+    overflow: 'hidden',
   },
   logoWrap: {
-    paddingRight: fp(0.5),
+    flexShrink: 0,
   },
   miniLogoBox: {
-    borderWidth: 3,
     borderColor: R.pink,
     backgroundColor: R.yellow,
-    paddingHorizontal: fp(1.2),
-    paddingVertical: fp(0.5),
     alignItems: 'center',
   },
   miniLogoLine: {
     fontFamily: B.font,
     fontWeight: B.fontWeight,
-    fontSize: fp(2.4),
     color: R.cream,
     letterSpacing: 1,
-    lineHeight: fp(3.1),
     textTransform: 'uppercase',
   },
   headerDivV: {
-    width: 3,
-    height: hp(7),
     backgroundColor: R.yellow,
-    marginHorizontal: fp(1.5),
     opacity: 0.9,
+    flexShrink: 0,
   },
   statsRow: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    minWidth: 0,
   },
   statCol: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 0,
   },
   statSep: {
-    width: fp(2.6),
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+    width: 20,
   },
   statLabel: {
     color: R.cream,
     fontFamily: B.font,
-    fontSize: fp(2.4),
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
     textAlign: 'center',
   },
   statValue: {
     color: R.yellow,
     fontFamily: B.font,
-    fontSize: fp(4.2),
-    marginTop: fp(0.2),
     textTransform: 'uppercase',
     textAlign: 'center',
   },
   headerBolt: {
     color: R.pink,
-    fontSize: fp(3.2),
-    lineHeight: fp(3.6),
   },
 
   titleSection: {
-    height: hp(11),
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: fp(2),
+    overflow: 'hidden',
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: fp(1) },
-  titleBolt: { color: R.yellow, fontSize: fp(3.6) },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: 4,
+  },
+  titleBolt: { color: R.yellow, flexShrink: 0 },
   titleText: {
-    fontFamily: B.font, fontSize: fp(4.8),
-    color: R.cream, letterSpacing: 2, textTransform: 'uppercase',
-    textShadowColor: R.coral, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0,
+    flex: 1,
+    fontFamily: B.font,
+    color: R.cream,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    textShadowColor: R.coral,
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 0,
+    textAlign: 'center',
   },
-  titleSub: { ...serifSub, fontSize: fp(2.4), letterSpacing: 0.5, marginTop: fp(0.6) },
+  titleSub: { ...serifSub, letterSpacing: 0.5, textAlign: 'center', paddingHorizontal: 8 },
 
-  previewCountRow: { marginTop: fp(0.6) },
+  previewCountRow: {},
   previewCountText: {
-    fontFamily: B.font, fontSize: fp(6),
-    color: R.yellow, textTransform: 'uppercase',
-    textShadowColor: R.coral, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0,
+    fontFamily: B.font,
+    color: R.yellow,
+    textTransform: 'uppercase',
+    textShadowColor: R.coral,
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 0,
+    textAlign: 'center',
   },
 
   gridFrame: {
-    flex: 1,
-    marginHorizontal: wp(2),
-    marginVertical: hp(0.5),
-    borderRadius: 16,
     backgroundColor: 'rgba(5,5,5,0.45)',
-    padding: 6,
+    overflow: 'hidden',
   },
   grid: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 16,
   },
-  gridRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 4 },
+  gridRow: { flexDirection: 'row', justifyContent: 'center' },
 
   footer: {
-    height: hp(10),
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: fp(3),
+    overflow: 'hidden',
   },
-  footerPreviewText: { ...serifSub, fontSize: fp(3), letterSpacing: 1 },
-  footerPreviewHighlight: { fontFamily: B.font, fontSize: fp(3), color: R.yellow, letterSpacing: 1, textTransform: 'uppercase' },
-  footerRow: { flexDirection: 'row', alignItems: 'center', gap: fp(1) },
-  dicaLabel: { ...retroButtonText, fontSize: fp(2.9), color: R.yellow, letterSpacing: 3 },
-  footerBolt: { color: R.pink, fontSize: fp(3) },
-  comboMsg: { fontFamily: B.font, fontSize: fp(3.4), color: R.yellow, letterSpacing: 1, textTransform: 'uppercase' },
-  footerText: { ...serifSub, fontSize: fp(2.3), letterSpacing: 0.5, marginTop: fp(0.4) },
-  hopIcon: { fontSize: fp(3.6), opacity: 0.8, marginTop: fp(0.3) },
+  footerPreviewText: { ...serifSub, letterSpacing: 1, textAlign: 'center' },
+  footerPreviewHighlight: { fontFamily: B.font, color: R.yellow, letterSpacing: 1, textTransform: 'uppercase' },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dicaLabel: { ...retroButtonText, color: R.yellow, letterSpacing: 2 },
+  footerBolt: { color: R.pink },
+  comboMsg: { fontFamily: B.font, color: R.yellow, letterSpacing: 1, textTransform: 'uppercase' },
+  footerText: { ...serifSub, letterSpacing: 0.5, textAlign: 'center', paddingHorizontal: 8 },
+  hopIcon: { opacity: 0.8 },
 
   popupOverlay: {
     position: 'absolute',
@@ -608,17 +689,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  popupImage: { width: '70%', height: '80%' },
+  popupContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '96%',
+  },
   popupHint: {
-    marginTop: fp(2),
-    borderWidth: 4,
     borderColor: R.navy,
     backgroundColor: R.cream,
-    paddingHorizontal: fp(3),
-    paddingVertical: fp(0.8),
-    borderRadius: 12,
   },
-  popupHintText: { ...retroButtonText, fontSize: fp(2.4) },
+  popupHintText: { ...retroButtonText },
 
   comboOverlay: {
     position: 'absolute',
@@ -628,27 +708,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(5,5,5,0.65)',
     zIndex: 99,
   },
-  comboFire:  { fontSize: fp(12), lineHeight: fp(14) },
+  comboFire: {},
   comboTitle: {
-    fontFamily: B.font, fontSize: fp(16),
-    color: R.yellow, letterSpacing: 6, textTransform: 'uppercase',
-    textShadowColor: R.coral, textShadowOffset: { width: 4, height: 4 }, textShadowRadius: 0,
+    fontFamily: B.font,
+    color: R.yellow,
+    letterSpacing: 6,
+    textTransform: 'uppercase',
+    textShadowColor: R.coral,
+    textShadowOffset: { width: 4, height: 4 },
+    textShadowRadius: 0,
   },
   comboCount: {
-    fontFamily: B.font, fontSize: fp(22),
-    color: R.cream, letterSpacing: 4, textTransform: 'uppercase',
-    textShadowColor: R.pink, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0,
-    lineHeight: fp(24),
+    fontFamily: B.font,
+    color: R.cream,
+    letterSpacing: 4,
+    textTransform: 'uppercase',
+    textShadowColor: R.pink,
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 0,
   },
   comboBonus: {
     ...retroButtonText,
-    fontSize: fp(6),
     letterSpacing: 3,
-    marginTop: fp(1),
     backgroundColor: R.yellow,
-    borderWidth: 3,
     borderColor: R.navy,
-    paddingHorizontal: fp(3),
-    paddingVertical: fp(1),
   },
 })

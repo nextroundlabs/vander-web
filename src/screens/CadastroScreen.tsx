@@ -2,9 +2,9 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { R, C } from '../theme'
 import { B } from '../brand'
-import { wp, hp, fp } from '../scale'
+import { useScale } from '../hooks/useScale'
 import VirtualKeyboard from '../components/VirtualKeyboard'
-import KeyboardDock, { KEYBOARD_DOCK_PADDING } from '../components/KeyboardDock'
+import KeyboardDock, { useKeyboardDockPadding } from '../components/KeyboardDock'
 import { saveCadastro, getCadastroByTelefone } from '../db/storage'
 import { Cadastro } from '../types'
 import { RetroButton, RetroBackground, RetroPanel, RetroModal } from '../components/retro'
@@ -91,21 +91,23 @@ export default function CadastroScreen({ telefone, onComplete, onBack, asModal =
         : setNome
   const kbMaxLen = activeField === 'telefone' ? 11 : activeField === 'dataNascimento' ? 8 : 40
   const kbMode = activeField === 'nome' ? ('alpha' as const) : ('numeric' as const)
+  const keyboardPadding = useKeyboardDockPadding(kbMode)
+  const { wp, hp, fp } = useScale()
 
   const body = (
     <View style={s.inner}>
-      <TouchableOpacity style={s.backRow} onPress={onBack}>
-        <Text style={s.back}>← VOLTAR</Text>
+      <TouchableOpacity style={[s.backRow, { paddingHorizontal: wp(5), paddingTop: hp(1.5) }]} onPress={onBack}>
+        <Text style={[s.back, { fontSize: fp(2.4) }]}>← VOLTAR</Text>
       </TouchableOpacity>
 
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={[s.scrollContent, { paddingBottom: KEYBOARD_DOCK_PADDING }]}
+        contentContainerStyle={[s.scrollContent, { paddingBottom: keyboardPadding, paddingHorizontal: wp(5), paddingVertical: hp(1) }]}
         keyboardShouldPersistTaps="handled"
       >
         <RetroPanel style={s.panel}>
-          <Text style={s.panelTitle}>Cadastro</Text>
-          <Text style={[serifSubDark, s.subtitle]}>Como devemos te chamar?</Text>
+          <Text style={[s.panelTitle, { fontSize: fp(4.5), marginBottom: hp(0.5) }]}>Cadastro</Text>
+          <Text style={[serifSubDark, { marginTop: hp(0.5) }]}>Como devemos te chamar?</Text>
 
           <Field
             label="Telefone"
@@ -129,11 +131,13 @@ export default function CadastroScreen({ telefone, onComplete, onBack, asModal =
             empty={nome.length === 0}
           />
 
-          {error ? <Text style={s.error}>{error}</Text> : null}
+          {error ? <Text style={[s.error, { fontSize: fp(2.2), marginTop: hp(1) }]}>{error}</Text> : null}
 
-          <TouchableOpacity style={s.lgpdRow} onPress={() => setLgpdModalVisible(true)} activeOpacity={0.7}>
-            <View style={[s.lgpdBox, lgpd && s.lgpdBoxChecked]}>{lgpd && <Text style={s.lgpdCheck}>✓</Text>}</View>
-            <Text style={s.lgpdText}>Li e concordo com os termos de uso e política de privacidade.</Text>
+          <TouchableOpacity style={[s.lgpdRow, { marginTop: hp(1.5) }]} onPress={() => setLgpdModalVisible(true)} activeOpacity={0.7}>
+            <View style={[s.lgpdBox, { width: fp(3), height: fp(3), marginRight: wp(3) }, lgpd && s.lgpdBoxChecked]}>
+              {lgpd && <Text style={[s.lgpdCheck, { fontSize: fp(1.8) }]}>✓</Text>}
+            </View>
+            <Text style={[s.lgpdText, { fontSize: fp(1.8), lineHeight: fp(2.6) }]}>Li e concordo com os termos de uso e política de privacidade.</Text>
           </TouchableOpacity>
         </RetroPanel>
       </ScrollView>
@@ -162,17 +166,17 @@ export default function CadastroScreen({ telefone, onComplete, onBack, asModal =
         }}
         onClose={() => setLgpdModalVisible(false)}
       >
-        <Text style={s.lgpdParagraph}>
+        <Text style={[s.lgpdParagraph, { fontSize: fp(2), lineHeight: fp(3), marginBottom: hp(1.5) }]}>
           Ao marcar esta opção, declaro que tenho 18 anos ou mais e autorizo a coleta e o tratamento dos meus dados
           pessoais informados neste cadastro (nome completo, telefone e data de nascimento) para participação nesta
           ação promocional.
         </Text>
-        <Text style={s.lgpdParagraph}>
+        <Text style={[s.lgpdParagraph, { fontSize: fp(2), lineHeight: fp(3), marginBottom: hp(1.5) }]}>
           Também autorizo que meus dados sejam utilizados pela empresa para envio de informações, promoções, campanhas,
           novidades, ofertas e comunicações relacionadas aos seus produtos e serviços, por meio dos canais de contato
           informados.
         </Text>
-        <Text style={s.lgpdParagraph}>
+        <Text style={[s.lgpdParagraph, { fontSize: fp(2), lineHeight: fp(3), marginBottom: hp(1.5) }]}>
           Estou ciente de que meus dados serão tratados em conformidade com a Lei Geral de Proteção de Dados Pessoais
           (Lei nº 13.709/2018 - LGPD), podendo solicitar, a qualquer momento, a atualização, correção ou exclusão dos
           meus dados por meio dos canais de atendimento disponibilizados pela empresa.
@@ -198,9 +202,12 @@ function Field({
   value: string
   empty: boolean
 }) {
+  const { hp, fp } = useScale()
   return (
-    <View style={s.fieldWrap}>
-      <Text style={s.label}>{label.toUpperCase()}</Text>
+    <View style={{ marginTop: hp(1.2) }}>
+      <Text style={{ fontFamily: B.font, fontSize: fp(2), color: R.navy, fontWeight: B.fontWeightMedium, marginBottom: hp(0.4), letterSpacing: 0.5, textTransform: 'uppercase' }}>
+        {label.toUpperCase()}
+      </Text>
       <TouchableOpacity style={[S.creamInput, active && s.inputActive]} onPress={onPress} activeOpacity={0.7}>
         <Text style={[S.creamInputText, empty && s.placeholder]} numberOfLines={1}>
           {value}
@@ -236,10 +243,10 @@ function parseBirthDate(value: string) {
 
 const s = StyleSheet.create({
   inner: { flex: 1 },
-  backRow: { flexShrink: 0, paddingHorizontal: wp(5), paddingTop: hp(1.5) },
-  back: { color: R.yellow, fontFamily: B.font, fontSize: fp(2.4), letterSpacing: 2, textTransform: 'uppercase' },
+  backRow: { flexShrink: 0 },
+  back: { color: R.yellow, fontFamily: B.font, letterSpacing: 2, textTransform: 'uppercase' },
   scroll: { flex: 1, minHeight: 0 },
-  scrollContent: { paddingHorizontal: wp(5), paddingVertical: hp(1), flexGrow: 1, justifyContent: 'center' },
+  scrollContent: { flexGrow: 1, justifyContent: 'center' },
   panel: { width: '100%' },
   panelTitle: {
     width: '100%',
@@ -249,39 +256,28 @@ const s = StyleSheet.create({
     fontWeight: B.fontWeight,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    fontSize: fp(4.5),
     color: R.navy,
     textShadowColor: R.yellow,
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 0,
-    marginBottom: hp(0.5),
   },
-  subtitle: { marginTop: hp(0.5) },
-  fieldWrap: { marginTop: hp(1.2) },
-  label: { fontFamily: B.font, fontSize: fp(2), color: R.navy, fontWeight: B.fontWeightMedium, marginBottom: hp(0.4), letterSpacing: 0.5, textTransform: 'uppercase' },
   inputActive: { borderColor: R.pink, borderWidth: 4 },
   placeholder: { color: C.textDim, fontWeight: '400' },
-  error: { color: R.coral, fontFamily: B.font, fontSize: fp(2.2), textAlign: 'center', marginTop: hp(1), letterSpacing: 0.5, textTransform: 'uppercase' },
-  lgpdRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: hp(1.5) },
+  error: { color: R.coral, fontFamily: B.font, textAlign: 'center', letterSpacing: 0.5, textTransform: 'uppercase' },
+  lgpdRow: { flexDirection: 'row', alignItems: 'flex-start' },
   lgpdBox: {
-    width: fp(3),
-    height: fp(3),
     borderWidth: 3,
     borderColor: R.navy,
-    marginRight: wp(3),
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   lgpdBoxChecked: { backgroundColor: R.yellow },
-  lgpdCheck: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(1.8) },
-  lgpdText: { flex: 1, fontFamily: B.font, fontSize: fp(1.8), color: R.navy, lineHeight: fp(2.6), letterSpacing: 0.5, textTransform: 'uppercase' },
+  lgpdCheck: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeight },
+  lgpdText: { flex: 1, fontFamily: B.font, color: R.navy, letterSpacing: 0.5, textTransform: 'uppercase' },
   lgpdParagraph: {
     fontFamily: B.font,
-    fontSize: fp(2),
     color: R.navy,
-    lineHeight: fp(3),
     letterSpacing: 0.3,
-    marginBottom: hp(1.5),
   },
 })

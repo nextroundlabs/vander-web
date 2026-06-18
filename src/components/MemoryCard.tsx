@@ -3,6 +3,9 @@ import { TouchableOpacity, Animated, StyleSheet, Image } from 'react-native'
 import { R } from '../theme'
 import { CARD_BACK } from '../gameAssets'
 
+/** Proporção largura / altura das cartas (canvas de design). */
+export const CARD_ASPECT = 0.72
+
 export type CardData = {
   id: number
   pairId: number
@@ -18,9 +21,11 @@ type Props = {
   onPress: () => void
   cardWidth: number
   cardHeight: number
+  /** Espaço entre cartas (metade aplicada em cada lado). */
+  gap?: number
 }
 
-export default function MemoryCard({ card, isFlipped, isMatched, onPress, cardWidth, cardHeight }: Props) {
+export default function MemoryCard({ card, isFlipped, isMatched, onPress, cardWidth, cardHeight, gap = 4 }: Props) {
   const anim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -37,7 +42,8 @@ export default function MemoryCard({ card, isFlipped, isMatched, onPress, cardWi
   const frontOpacity = anim.interpolate({ inputRange: [0, 0.45, 0.55, 1], outputRange: [0, 0, 1, 1] })
   const backOpacity  = anim.interpolate({ inputRange: [0, 0.45, 0.55, 1], outputRange: [1, 1, 0, 0] })
 
-  const size = { width: cardWidth, height: cardHeight, margin: 4 }
+  const half = gap / 2
+  const size = { width: cardWidth, height: cardHeight, marginHorizontal: half, marginVertical: half }
 
   return (
     <TouchableOpacity
@@ -70,7 +76,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     overflow: 'hidden',
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 3,
     borderColor: R.pink,
   },

@@ -8,123 +8,238 @@ import {
 } from 'react-native'
 import { B } from '../brand'
 import { R } from '../theme'
-import { fp } from '../scale'
 import { getRanking } from '../db/storage'
 import { Partida } from '../types'
-import { BG_RANKING } from '../gameAssets'
+import { BG_RANKING, RANK_TABLE } from '../gameAssets'
 import { RetroDecor } from '../components/retro'
-import { useViewport } from '../hooks/useViewport'
+import { designRect } from '../designCanvas'
+import { useCoverTransform } from '../hooks/useCoverTransform'
+import CoverBackground from '../components/CoverBackground'
 
-const IMG_W = 1080
-const IMG_H = 1920
 
-/** Design coords (1080×1920) — cream row area only, excluding pink rank column */
-const TABLE_TOP_Y = 970
-const ROW_HEIGHT = 77
-const ROW_GAP = 23
-const TABLE_LEFT = 268
-const TABLE_WIDTH = 598
-const NAME_LEFT_PADDING = 22
-const SCORE_RIGHT_PADDING = 16
 
-function useCoverTransform() {
-  const { width: sw, height: sh } = useViewport()
-  const scale = Math.max(sw / IMG_W, sh / IMG_H)
-  const offsetX = (sw - IMG_W * scale) / 2
-  const offsetY = (sh - IMG_H * scale) / 2
-  return { scale, offsetX, offsetY }
-}
+/** Posição da tabela no canvas bg-ranking (1080×1920) */
+
+const TABLE_SCREEN_LEFT = 144
+
+const TABLE_SCREEN_TOP = 945
+
+const TABLE_SCREEN_W = 792
+
+const TABLE_SCREEN_H = 520
+
+
+
+/** Layout interno de rank_table.png (792×520) — coluna rosa + faixas bege */
+
+const DATA_LEFT = 154
+
+const BORDER_INSET = 10
+
+const NAME_PAD_L = 16
+
+const SCORE_PAD_R = 20
+
+const NAME_FONT = 34
+
+const SCORE_FONT = 32
+
+
 
 type Props = { onStart: () => void }
 
+
+
 export default function IdleScreen({ onStart }: Props) {
+
   const [topPlayers, setTopPlayers] = useState<(Partida & { nome: string })[]>([])
+
   const { scale, offsetX, offsetY } = useCoverTransform()
 
+
+
   useEffect(() => {
+
     loadRanking()
+
     const iv = setInterval(loadRanking, 8000)
+
     return () => clearInterval(iv)
+
   }, [])
 
+
+
   const loadRanking = async () => {
+
     setTopPlayers(await getRanking(5))
+
   }
+
+
 
   const fmt = (nome: string) => {
+
     const p = nome.split(' ')
+
     return (p[0] + (p[1] ? ' ' + p[1][0] + '.' : '')).toUpperCase()
+
   }
 
-  const tableStyle = {
-    left: TABLE_LEFT * scale + offsetX,
-    top: TABLE_TOP_Y * scale + offsetY,
-    width: TABLE_WIDTH * scale,
-    gap: ROW_GAP * scale,
+
+
+  const tableFrame = designRect(
+
+    TABLE_SCREEN_LEFT,
+
+    TABLE_SCREEN_TOP,
+
+    TABLE_SCREEN_W,
+
+    TABLE_SCREEN_H,
+
+    scale,
+
+    offsetX,
+
+    offsetY,
+
+  )
+
+  const rowsInset = {
+
+    paddingTop: BORDER_INSET * scale,
+
+    paddingBottom: BORDER_INSET * scale,
+
+    paddingLeft: DATA_LEFT * scale,
+
+    paddingRight: SCORE_PAD_R * scale,
+
   }
-  const rowHeight = ROW_HEIGHT * scale
+
+  const namePad = NAME_PAD_L * scale
+
+  const nameSize = NAME_FONT * scale
+
+  const scoreSize = SCORE_FONT * scale
+
+
 
   return (
-    <ImageBackground source={BG_RANKING} style={s.root} resizeMode="cover">
+    <CoverBackground source={BG_RANKING}>
       <RetroDecor />
 
       <TouchableOpacity style={s.startZone} onPress={onStart} activeOpacity={1} accessibilityLabel="Iniciar jogo" />
 
-      <View pointerEvents="none" style={[s.tableOverlay, tableStyle]}>
-        {Array.from({ length: 5 }).map((_, i) => {
-          const player = topPlayers[i]
-          return (
-            <View key={i} style={[s.row, { height: rowHeight }]}>
-              {player ? (
-                <>
-                  <Text
-                    numberOfLines={1}
-                    style={[s.rankName, { paddingLeft: NAME_LEFT_PADDING * scale }]}
-                  >
-                    {fmt(player.nome)}
-                  </Text>
-                  <Text style={[s.rankScore, { paddingRight: SCORE_RIGHT_PADDING * scale }]}>
-                    {player.pontuacao}
-                  </Text>
-                </>
-              ) : null}
-            </View>
-          )
-        })}
+      <View pointerEvents="none" style={[s.tableFrame, tableFrame]}>
+        <ImageBackground source={RANK_TABLE} style={s.tableBg} resizeMode="stretch">
+          <View style={[s.rows, rowsInset]}>
+            {Array.from({ length: 5 }).map((_, i) => {
+              const player = topPlayers[i]
+              return (
+                <View key={i} style={s.row}>
+                  {player ? (
+                    <>
+                      <Text
+                        numberOfLines={1}
+                        style={[s.rankName, { paddingLeft: namePad, fontSize: nameSize, lineHeight: nameSize * 1.05 }]}
+                      >
+                        {fmt(player.nome)}
+                      </Text>
+                      <Text style={[s.rankScore, { fontSize: scoreSize, lineHeight: scoreSize * 1.05 }]}>
+                        {player.pontuacao}
+                      </Text>
+                    </>
+                  ) : null}
+                </View>
+              )
+            })}
+          </View>
+        </ImageBackground>
       </View>
-    </ImageBackground>
+    </CoverBackground>
   )
 }
 
+
+
 const s = StyleSheet.create({
-  root: { flex: 1 },
   startZone: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  tableOverlay: {
+
+  tableFrame: {
+
     position: 'absolute',
-    flexDirection: 'column',
+
+    overflow: 'hidden',
+
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rankName: {
+
+  tableBg: {
+
     flex: 1,
-    fontFamily: B.font,
-    fontWeight: B.fontWeight,
-    fontSize: fp(3.8),
-    color: R.navy,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    includeFontPadding: false,
+
+    width: '100%',
+
+    height: '100%',
+
   },
+
+  rows: {
+
+    flex: 1,
+
+    flexDirection: 'column',
+
+  },
+
+  row: {
+
+    flex: 1,
+
+    flexDirection: 'row',
+
+    alignItems: 'center',
+
+  },
+
+  rankName: {
+
+    flex: 1,
+
+    fontFamily: B.font,
+
+    fontWeight: B.fontWeight,
+
+    color: R.navy,
+
+    letterSpacing: 0.5,
+
+    textTransform: 'uppercase',
+
+    includeFontPadding: false,
+
+  },
+
   rankScore: {
+
     fontFamily: B.font,
+
     fontWeight: B.fontWeight,
-    fontSize: fp(4.5),
+
     color: R.navy,
+
     letterSpacing: 0.5,
+
     textTransform: 'uppercase',
+
     textAlign: 'right',
+
     includeFontPadding: false,
+
+    flexShrink: 0,
+
   },
+
 })
+

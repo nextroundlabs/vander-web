@@ -6,6 +6,8 @@ import {
 import { C, R } from '../theme'
 import { B } from '../brand'
 import { wp, hp, fp } from '../scale'
+import { useViewport } from '../hooks/useViewport'
+import { isCompact, isNarrow } from '../responsive'
 import { RetroBackground } from '../components/retro'
 import {
   getPartidasComCadastro, getCadastros, getPremios, savePremios,
@@ -27,6 +29,9 @@ type Props = {
 export default function DashboardScreen({ onClose }: Props) {
   const [tab, setTab] = useState<Tab>('ranking')
   const [horaAtual, setHoraAtual] = useState(() => dataHoraLocal())
+  const { width } = useViewport()
+  const compact = isCompact(width)
+  const narrow = isNarrow(width)
 
   useEffect(() => {
     const iv = setInterval(() => setHoraAtual(dataHoraLocal()), 10000)
@@ -175,25 +180,34 @@ export default function DashboardScreen({ onClose }: Props) {
   return (
     <RetroBackground decor={false}>
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Text style={styles.topTitle}>DASHBOARD</Text>
-        <Text style={styles.topClock}>🕐 {horaAtual}</Text>
-        <TouchableOpacity onPress={handleLogout}>
+      <View style={[styles.topBar, compact && styles.topBarCompact]}>
+        <Text style={[styles.topTitle, compact && styles.topTitleCompact]}>DASHBOARD</Text>
+        {!compact && <Text style={styles.topClock}>🕐 {horaAtual}</Text>}
+        <TouchableOpacity onPress={handleLogout} hitSlop={12}>
           <Text style={styles.closeBtn}>✕ SAIR</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.tabs}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabs}
+      >
         {(['ranking','premios','resgates','dados','config'] as Tab[]).map(t => (
-          <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
+          <TouchableOpacity
+            key={t}
+            style={[styles.tab, tab === t && styles.tabActive, narrow && styles.tabNarrow]}
+            onPress={() => setTab(t)}
+          >
+            <Text style={[styles.tabText, tab === t && styles.tabTextActive, narrow && styles.tabTextNarrow]}>
               {t === 'ranking' ? 'RANKING' : t === 'premios' ? 'PRÊMIOS' : t === 'resgates' ? 'RESGATES' : t === 'dados' ? 'DADOS' : 'CONFIG'}
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentInner, compact && styles.contentInnerCompact]}>
         {tab === 'ranking' && (
           <>
             {/* ── Sessão sendo exibida ── */}
@@ -226,14 +240,14 @@ export default function DashboardScreen({ onClose }: Props) {
             ) : (
               <>
                 {/* ── Ranking ativo ── */}
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>
+                <View style={[styles.sectionHeader, narrow && styles.sectionHeaderStack]}>
+                  <Text style={[styles.sectionTitle, styles.sectionTitleInline]}>
                     RANKING ATUAL ({partidas.filter(p => {
                       const ativa = sessoes.find(s => !s.dataFim)
                       return ativa ? p.sessaoId === ativa.id : true
                     }).length} partidas)
                   </Text>
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.sectionActions, narrow && styles.sectionActionsWrap]}>
                     <TouchableOpacity onPress={handleExport}>
                       <Text style={styles.exportBtn}>↓ CSV</Text>
                     </TouchableOpacity>
@@ -315,8 +329,8 @@ export default function DashboardScreen({ onClose }: Props) {
         {tab === 'premios' && (
           <>
             {/* cabeçalho com botão + */}
-            <View style={styles.premiosHeader}>
-              <Text style={styles.sectionTitle}>FAIXAS DE PRÊMIOS</Text>
+            <View style={[styles.premiosHeader, narrow && styles.premiosHeaderStack]}>
+              <Text style={[styles.sectionTitle, styles.sectionTitleInline]}>FAIXAS DE PRÊMIOS</Text>
               <TouchableOpacity
                 style={styles.addBtn}
                 onPress={() => {
@@ -338,7 +352,7 @@ export default function DashboardScreen({ onClose }: Props) {
             {premios.map((pr, i) => (
               <View key={pr.id} style={styles.premioRow}>
                 {/* header do card: número + botão excluir */}
-                <View style={styles.premioCardHeader}>
+                <View style={[styles.premioCardHeader, narrow && styles.premioCardHeaderStack]}>
                   <Text style={styles.premioCardNum}>PRÊMIO {i + 1}</Text>
                   <TouchableOpacity
                     style={styles.deleteBtn}
@@ -381,7 +395,7 @@ export default function DashboardScreen({ onClose }: Props) {
                     placeholderTextColor={C.textDim}
                   />
                 </View>
-                <View style={styles.premioRangeRow}>
+                <View style={[styles.premioRangeRow, narrow && styles.premioRangeRowStack]}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.premioLabel}>MIN PTS</Text>
                     <TextInput
@@ -543,104 +557,122 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1.6),
     borderBottomWidth: 4,
     borderBottomColor: R.pink,
     backgroundColor: R.navy,
+    gap: wp(2),
   },
-  topTitle: { color: R.yellow, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 18, letterSpacing: 6, textTransform: 'uppercase' },
+  topBarCompact: {
+    paddingVertical: hp(1.2),
+  },
+  topTitle: { color: R.yellow, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(2.6), letterSpacing: 4, textTransform: 'uppercase', flexShrink: 0 },
+  topTitleCompact: { fontSize: fp(2.2), letterSpacing: 2 },
   topClock: { color: R.cream, fontFamily: B.font, fontSize: fp(2.2), letterSpacing: 1, flex: 1, textAlign: 'center', textTransform: 'uppercase' },
-  closeBtn: { color: R.pink, fontFamily: B.font, fontSize: 13, letterSpacing: 2, textTransform: 'uppercase' },
+  closeBtn: { color: R.pink, fontFamily: B.font, fontSize: fp(2), letterSpacing: 1, textTransform: 'uppercase', minHeight: 44, textAlignVertical: 'center' },
 
-  tabs: { flexDirection: 'row', borderBottomWidth: 3, borderBottomColor: R.navy, backgroundColor: R.navyDeep },
-  tab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  tabsScroll: { flexGrow: 0, borderBottomWidth: 3, borderBottomColor: R.navy, backgroundColor: R.navyDeep },
+  tabs: { flexDirection: 'row', minWidth: '100%' },
+  tab: { flex: 1, minWidth: wp(22), paddingVertical: hp(1.4), paddingHorizontal: wp(2), alignItems: 'center', justifyContent: 'center' },
+  tabNarrow: { minWidth: wp(28), paddingVertical: hp(1.6) },
   tabActive: { borderBottomWidth: 4, borderBottomColor: R.yellow },
-  tabText: { color: R.cream, fontFamily: B.font, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', opacity: 0.65 },
+  tabText: { color: R.cream, fontFamily: B.font, fontSize: fp(1.8), letterSpacing: 1, textTransform: 'uppercase', opacity: 0.65, textAlign: 'center' },
+  tabTextNarrow: { fontSize: fp(1.6), letterSpacing: 0.5 },
   tabTextActive: { color: R.yellow, opacity: 1 },
 
-  content: { flex: 1, padding: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { color: R.cream, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 16 },
-  exportBtn: { color: R.yellow, fontFamily: B.font, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' },
+  content: { flex: 1 },
+  contentInner: { padding: wp(4), paddingBottom: hp(4) },
+  contentInnerCompact: { padding: wp(3) },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: hp(1.6), gap: wp(2) },
+  sectionHeaderStack: { flexDirection: 'column', alignItems: 'flex-start' },
+  sectionActions: { flexDirection: 'row', gap: 12, flexShrink: 0 },
+  sectionActionsWrap: { flexWrap: 'wrap' },
+  sectionTitle: { color: R.cream, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(2), letterSpacing: 2, textTransform: 'uppercase', marginBottom: hp(1.6) },
+  sectionTitleInline: { marginBottom: 0, flex: 1 },
+  exportBtn: { color: R.yellow, fontFamily: B.font, fontSize: fp(1.9), letterSpacing: 1, textTransform: 'uppercase', minHeight: 44, textAlignVertical: 'center' },
 
-  emptyText: { color: R.cream, fontFamily: B.font, fontSize: 13, textAlign: 'center', marginTop: 32, letterSpacing: 0.5, textTransform: 'uppercase', opacity: 0.8 },
+  emptyText: { color: R.cream, fontFamily: B.font, fontSize: fp(2), textAlign: 'center', marginTop: hp(3), letterSpacing: 0.5, textTransform: 'uppercase', opacity: 0.8 },
   rankRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: hp(1.2),
     borderBottomWidth: 2, borderBottomColor: R.navy,
-    backgroundColor: R.cream, borderRadius: 10, marginBottom: 6, paddingHorizontal: 10,
+    backgroundColor: R.cream, borderRadius: 10, marginBottom: 6, paddingHorizontal: wp(2.5),
   },
-  rankPos: { color: R.navy, fontFamily: B.font, fontSize: 14, minWidth: 36, fontWeight: B.fontWeight },
-  rankInfo: { flex: 1 },
-  rankName: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeightMedium, fontSize: 13 },
-  rankSub: { color: R.navy, fontFamily: B.font, fontSize: 10, marginTop: 2, opacity: 0.75 },
-  rankScore: { color: R.pink, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 16 },
+  rankPos: { color: R.navy, fontFamily: B.font, fontSize: fp(2.2), minWidth: wp(8), fontWeight: B.fontWeight },
+  rankInfo: { flex: 1, minWidth: 0 },
+  rankName: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeightMedium, fontSize: fp(2) },
+  rankSub: { color: R.navy, fontFamily: B.font, fontSize: fp(1.6), marginTop: 2, opacity: 0.75 },
+  rankScore: { color: R.pink, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(2.4), flexShrink: 0 },
 
-  premiosHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  premiosHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: hp(1.6), gap: wp(2) },
+  premiosHeaderStack: { flexDirection: 'column', alignItems: 'stretch' },
   addBtn: {
-    backgroundColor: R.yellow, paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 3, borderColor: R.navy,
+    backgroundColor: R.yellow, paddingHorizontal: wp(3), paddingVertical: hp(1),
+    borderRadius: 10, borderWidth: 3, borderColor: R.navy, minHeight: 44, justifyContent: 'center',
   },
-  addBtnText: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 13, letterSpacing: 1 },
+  addBtnText: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(2), letterSpacing: 1, textAlign: 'center' },
 
   premioRow: {
-    borderWidth: 3, borderColor: R.navy, padding: 16, marginBottom: 16,
+    borderWidth: 3, borderColor: R.navy, padding: wp(3.5), marginBottom: hp(1.6),
     backgroundColor: R.cream, borderRadius: 12,
   },
   premioCardHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 12, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: R.navy,
+    marginBottom: hp(1.2), paddingBottom: hp(1), borderBottomWidth: 2, borderBottomColor: R.navy, gap: wp(2),
   },
-  premioCardNum: { color: R.pink, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 11, letterSpacing: 3 },
-  deleteBtn: { borderWidth: 2, borderColor: R.coral, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  deleteBtnText: { color: R.coral, fontFamily: B.font, fontWeight: B.fontWeightMedium, fontSize: 11, letterSpacing: 1 },
-  premioInputRow: { marginBottom: 10 },
-  premioLabel: { color: R.navy, fontFamily: B.font, fontSize: 10, letterSpacing: 2, marginBottom: 4, fontWeight: B.fontWeightMedium },
+  premioCardHeaderStack: { flexDirection: 'column', alignItems: 'stretch' },
+  premioCardNum: { color: R.pink, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(1.7), letterSpacing: 2 },
+  deleteBtn: { borderWidth: 2, borderColor: R.coral, paddingHorizontal: wp(2.5), paddingVertical: hp(0.6), borderRadius: 8, minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  deleteBtnText: { color: R.coral, fontFamily: B.font, fontWeight: B.fontWeightMedium, fontSize: fp(1.7), letterSpacing: 1 },
+  premioInputRow: { marginBottom: hp(1) },
+  premioLabel: { color: R.navy, fontFamily: B.font, fontSize: fp(1.6), letterSpacing: 1, marginBottom: 4, fontWeight: B.fontWeightMedium },
   premioInput: {
     backgroundColor: R.cream, color: R.navy, fontFamily: B.font,
-    fontSize: 13, padding: 10, borderWidth: 2, borderColor: R.navy, borderRadius: 8,
-    letterSpacing: 0.5, textTransform: 'uppercase',
+    fontSize: fp(2), padding: hp(1), borderWidth: 2, borderColor: R.navy, borderRadius: 8,
+    letterSpacing: 0.5, textTransform: 'uppercase', minHeight: 44,
   },
   premioRangeRow: { flexDirection: 'row', gap: 8 },
+  premioRangeRowStack: { flexDirection: 'column' },
   premioInputSmall: {
     backgroundColor: R.cream, color: R.navy, fontFamily: B.font,
-    fontSize: 13, padding: 10, borderWidth: 2, borderColor: R.navy, borderRadius: 8,
-    letterSpacing: 0.5, textTransform: 'uppercase',
+    fontSize: fp(2), padding: hp(1), borderWidth: 2, borderColor: R.navy, borderRadius: 8,
+    letterSpacing: 0.5, textTransform: 'uppercase', minHeight: 44,
   },
 
   saveBtn: {
-    backgroundColor: R.yellow, padding: 18, alignItems: 'center', marginTop: 8,
-    borderWidth: 3, borderColor: R.navy, borderRadius: 12,
+    backgroundColor: R.yellow, padding: hp(1.8), alignItems: 'center', marginTop: hp(1),
+    borderWidth: 3, borderColor: R.navy, borderRadius: 12, minHeight: 48, justifyContent: 'center',
   },
-  saveBtnText: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 14, letterSpacing: 3 },
+  saveBtnText: { color: R.navy, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(2.2), letterSpacing: 2 },
 
-  cfgRow: { marginBottom: 20 },
-  cfgLabel: { color: R.cream, fontFamily: B.font, fontSize: 11, letterSpacing: 2, marginBottom: 6 },
+  cfgRow: { marginBottom: hp(2) },
+  cfgLabel: { color: R.cream, fontFamily: B.font, fontSize: fp(1.7), letterSpacing: 1, marginBottom: hp(0.6) },
   cfgInput: {
     backgroundColor: R.cream, color: R.navy, fontFamily: B.font,
-    fontSize: 16, padding: 12, borderWidth: 2, borderColor: R.navy, borderRadius: 8,
-    letterSpacing: 0.5, textTransform: 'uppercase',
+    fontSize: fp(2.4), padding: hp(1.2), borderWidth: 2, borderColor: R.navy, borderRadius: 8,
+    letterSpacing: 0.5, textTransform: 'uppercase', minHeight: 44,
   },
-  cfgDivider: { height: 2, backgroundColor: R.pink, marginVertical: 20, opacity: 0.5 },
+  cfgDivider: { height: 2, backgroundColor: R.pink, marginVertical: hp(2), opacity: 0.5 },
   cfgNote: { color: R.cream, fontFamily: B.font, fontSize: fp(2.2), lineHeight: fp(3) },
 
-  statusBadge: { borderWidth: 2, borderColor: R.yellow, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  statusBadge: { borderWidth: 2, borderColor: R.yellow, paddingHorizontal: wp(2), paddingVertical: hp(0.5), borderRadius: 8, flexShrink: 0 },
   statusDone: { borderColor: R.green },
-  statusText: { color: R.yellow, fontFamily: B.font, fontSize: 9, letterSpacing: 1 },
+  statusText: { color: R.yellow, fontFamily: B.font, fontSize: fp(1.4), letterSpacing: 1 },
 
   sessaoRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: hp(1.2),
     borderBottomWidth: 2, borderBottomColor: R.navy, backgroundColor: R.cream,
-    borderRadius: 10, marginBottom: 6, paddingHorizontal: 10,
+    borderRadius: 10, marginBottom: 6, paddingHorizontal: wp(2.5), gap: wp(2),
   },
-  sessaoNome: { color: R.pink, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 12, letterSpacing: 2, flex: 1, textAlign: 'right' },
+  sessaoNome: { color: R.pink, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(1.9), letterSpacing: 1, flex: 1, textAlign: 'right' },
 
-  dadosNote: { color: R.cream, fontFamily: B.font, fontSize: 11, marginBottom: 14, lineHeight: 17, letterSpacing: 0.5, textTransform: 'uppercase' },
+  dadosNote: { color: R.cream, fontFamily: B.font, fontSize: fp(1.7), marginBottom: hp(1.4), lineHeight: fp(2.6), letterSpacing: 0.5, textTransform: 'uppercase' },
   dadosBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 3, borderColor: R.yellow, backgroundColor: R.navyDeep,
-    paddingVertical: 14, paddingHorizontal: 16, marginBottom: 8, borderRadius: 12,
+    paddingVertical: hp(1.4), paddingHorizontal: wp(3.5), marginBottom: hp(0.8), borderRadius: 12, minHeight: 48,
   },
   dadosBtnImport: { borderColor: R.pink },
-  dadosBtnText: { color: R.cream, fontFamily: B.font, fontSize: 13 },
-  dadosBtnIcon: { color: R.yellow, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: 18 },
+  dadosBtnText: { color: R.cream, fontFamily: B.font, fontSize: fp(2), flex: 1 },
+  dadosBtnIcon: { color: R.yellow, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(2.6) },
 })

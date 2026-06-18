@@ -45,5 +45,5 @@ export default function ScreenTransition({ screenKey, style, children }: Props) 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, overflow: 'hidden' },
 })

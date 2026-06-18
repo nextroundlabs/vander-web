@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { B } from '../brand'
 import { hp, fp } from '../scale'
+import { useViewport } from '../hooks/useViewport'
+import { isCompact, isNarrow } from '../responsive'
 
 type Mode = 'alpha' | 'numeric'
 
@@ -46,6 +48,9 @@ function keyBg(row: number, col: number) {
 
 export default function VirtualKeyboard({ value, onChange, maxLength = 100, mode = 'alpha' }: Props) {
   const [currentMode, setCurrentMode] = useState<Mode>(mode)
+  const { width } = useViewport()
+  const compact = isCompact(width)
+  const narrow = isNarrow(width)
 
   useEffect(() => {
     setCurrentMode(mode)
@@ -58,17 +63,29 @@ export default function VirtualKeyboard({ value, onChange, maxLength = 100, mode
     } else if (key && value.length < maxLength) onChange(value + key)
   }
 
+  const keyStyle = [
+    styles.key,
+    narrow && styles.keyNarrow,
+    compact && styles.keyCompact,
+  ]
+  const keyTextStyle = [
+    styles.keyText,
+    compact && styles.keyTextCompact,
+  ]
+
   if (currentMode === 'numeric') {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, compact && styles.containerCompact]}>
         {ROWS_NUM.map((row, ri) => (
           <View key={ri} style={styles.row}>
             {row.map((key, ki) => (
               <TouchableOpacity
                 key={ki}
                 style={[
-                  styles.key,
+                  ...keyStyle,
                   styles.keyNumeric,
+                  narrow && styles.keyNumericNarrow,
+                  compact && styles.keyNumericCompact,
                   !key && styles.keyEmpty,
                   key === '0' && { backgroundColor: P.keyYellow },
                   key === '⌫' && styles.keyDelete,
@@ -77,7 +94,7 @@ export default function VirtualKeyboard({ value, onChange, maxLength = 100, mode
                 disabled={!key}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.keyText, key === '⌫' && styles.keyDeleteText]}>{key}</Text>
+                <Text style={[...keyTextStyle, key === '⌫' && styles.keyDeleteText]}>{key}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -92,31 +109,31 @@ export default function VirtualKeyboard({ value, onChange, maxLength = 100, mode
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && styles.containerCompact]}>
       {ROWS_ALPHA.map((row, ri) => (
         <View key={ri} style={styles.row}>
           {row.map((key, ki) => (
             <TouchableOpacity
               key={ki}
-              style={[styles.key, { backgroundColor: keyBg(ri, ki) }]}
+              style={[...keyStyle, { backgroundColor: keyBg(ri, ki) }]}
               onPress={() => press(key)}
               activeOpacity={0.7}
             >
-              <Text style={styles.keyText}>{key}</Text>
+              <Text style={keyTextStyle}>{key}</Text>
             </TouchableOpacity>
           ))}
         </View>
       ))}
       <View style={styles.row}>
         <TouchableOpacity
-          style={[styles.key, styles.keySpace, { backgroundColor: P.keyYellow }]}
+          style={[...keyStyle, styles.keySpace, { backgroundColor: P.keyYellow }]}
           onPress={() => press('ESPAÇO')}
           activeOpacity={0.7}
         >
-          <Text style={styles.keyText}>ESPAÇO</Text>
+          <Text style={keyTextStyle}>ESPAÇO</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.key, styles.keyDelete]}
+          style={[...keyStyle, styles.keyDelete]}
           onPress={() => press('⌫')}
           activeOpacity={0.7}
         >
@@ -140,28 +157,61 @@ const styles = StyleSheet.create({
     borderTopWidth: 3,
     borderTopColor: P.keyPink,
   },
+  containerCompact: {
+    paddingTop: hp(0.6),
+    paddingBottom: hp(0.5),
+    paddingHorizontal: 4,
+  },
   row: { flexDirection: 'row', justifyContent: 'center', marginBottom: hp(0.7) },
   key: {
+    flex: 1,
+    flexBasis: 0,
     borderWidth: 2,
     borderColor: P.border,
     borderRadius: 10,
-    minWidth: fp(5.5),
+    minWidth: fp(4.8),
+    maxWidth: fp(8),
     height: hp(5.2),
     marginHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
+  },
+  keyNarrow: {
+    minWidth: fp(4.2),
+    maxWidth: fp(7),
+    marginHorizontal: 1,
+  },
+  keyCompact: {
+    minWidth: fp(3.8),
+    maxWidth: fp(6.5),
+    height: hp(4.6),
+    borderRadius: 8,
   },
   keyNumeric: {
-    minWidth: fp(18),
+    flex: 1,
+    flexBasis: 0,
+    minWidth: fp(14),
+    maxWidth: fp(22),
     height: hp(6.2),
-    marginHorizontal: fp(2),
+    marginHorizontal: fp(1.5),
     backgroundColor: P.keyCream,
   },
+  keyNumericNarrow: {
+    minWidth: fp(12),
+    maxWidth: fp(20),
+    marginHorizontal: fp(1),
+  },
+  keyNumericCompact: {
+    minWidth: fp(10),
+    maxWidth: fp(18),
+    height: hp(5.4),
+  },
   keyEmpty: { backgroundColor: 'transparent', borderColor: 'transparent' },
-  keySpace: { flex: 2, marginHorizontal: 4 },
-  keyDelete: { flex: 1, marginHorizontal: 4, backgroundColor: P.keyDelete },
-  keyText: { color: P.text, fontFamily: B.font, fontSize: fp(2.5), fontWeight: B.fontWeight, letterSpacing: 1, textTransform: 'uppercase' },
+  keySpace: { flex: 2, marginHorizontal: 4, maxWidth: undefined },
+  keyDelete: { flex: 1, marginHorizontal: 4, backgroundColor: P.keyDelete, maxWidth: undefined },
+  keyText: { color: P.text, fontFamily: B.font, fontSize: fp(2.5), fontWeight: B.fontWeight, letterSpacing: 0.5, textTransform: 'uppercase' },
+  keyTextCompact: { fontSize: fp(2.1), letterSpacing: 0 },
   keyDeleteText: { color: P.text, fontFamily: B.font, fontSize: fp(2.5), fontWeight: B.fontWeight, letterSpacing: 1, textTransform: 'uppercase' },
   modeBtn: {
     backgroundColor: P.modeBtn,
@@ -172,6 +222,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: P.border,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   modeBtnText: { color: P.text, fontFamily: B.font, fontWeight: B.fontWeight, fontSize: fp(2.2), letterSpacing: 2, textTransform: 'uppercase' },
 })
