@@ -101,21 +101,36 @@ export default function JogoScreen({ cadastro, onFinish }: Props) {
     if (finishedRef.current) return
     finishedRef.current = true
     clearInterval(timerRef.current!)
-    getSessaoAtiva().then(sessao => {
-      const partidaLocal: Partida = {
-        id: Date.now().toString(),
-        cadastroId: cadastro.id,
-        sessaoId: sessao.id,
-        pontuacao: finalScore,
-        pares: pairs,
-        tempo: elapsed,
-        data: new Date().toISOString(),
-      }
-      // savePartida agora retorna a partida com o id REAL do banco — é esse
-      // id que precisa seguir para a tela de premiação (resgates referenciam
-      // partidas por id, e o id local Date.now() não existe no banco).
-      savePartida(partidaLocal).then(salva => onFinish(salva))
-    })
+
+    // Partida local usada como fallback se o banco falhar ou demorar demais
+    const fallback: Partida = {
+      id: Date.now().toString(),
+      cadastroId: cadastro.id,
+      sessaoId: '',
+      pontuacao: finalScore,
+      pares: pairs,
+      tempo: elapsed,
+      data: new Date().toISOString(),
+    }
+
+    // Timeout de segurança: se o Supabase demorar > 8s em rede ruim,
+    // avança para a premiação com os dados locais para não travar o jogo.
+    const safetyTimer = setTimeout(() => {
+      console.error('[JogoScreen] timeout ao salvar — avançando com dados locais')
+      onFinish(fallback)
+    }, 8000)
+
+    getSessaoAtiva()
+      .then(sessao => savePartida({ ...fallback, sessaoId: sessao.id }))
+      .then(salva => {
+        clearTimeout(safetyTimer)
+        onFinish(salva)
+      })
+      .catch(err => {
+        clearTimeout(safetyTimer)
+        console.error('[JogoScreen] erro ao salvar partida:', err)
+        onFinish(fallback) // avança mesmo com erro — melhor do que travar
+      })
   }, [cadastro, onFinish])
 
   useEffect(() => {

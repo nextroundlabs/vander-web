@@ -97,17 +97,23 @@ export default function PremiacaoScreen({ cadastro, partida, onPlayAgain: _onPla
   useEffect(() => { loadData() }, [])
 
   const loadData = async () => {
-    const pos = await getPosicaoNoRanking(cadastro.id)
-    setRanking(pos)
+    try {
+      const pos = await getPosicaoNoRanking(cadastro.id)
+      setRanking(pos)
+    } catch (err) {
+      console.error('[PremiacaoScreen] erro ao buscar ranking:', err)
+      setRanking(1) // fallback
+    }
 
-    // resolverPremio decide tudo no servidor numa transação só (já participou?
-    // qual faixa? tem estoque?) — evita condição de corrida entre visitantes
-    // diferentes terminando o jogo ao mesmo tempo e disputando o último item
-    // do estoque, problema que não existia quando só havia um totem.
-    const resultado = await resolverPremio(cadastro.id, partida.id, partida.pontuacao)
-    setJaParticipou(resultado.jaParticipou)
-    setPremio(resultado.premio)
-    setSemEstoque(resultado.semEstoque)
+    try {
+      const resultado = await resolverPremio(cadastro.id, partida.id, partida.pontuacao)
+      setJaParticipou(resultado.jaParticipou)
+      setPremio(resultado.premio)
+      setSemEstoque(resultado.semEstoque)
+    } catch (err) {
+      console.error('[PremiacaoScreen] erro ao resolver premio:', err)
+      // fallback: mostra tela sem prêmio em vez de travar
+    }
 
     setLoading(false)
     Animated.parallel([
